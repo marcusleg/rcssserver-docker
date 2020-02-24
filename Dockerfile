@@ -1,5 +1,5 @@
 FROM ubuntu:18.04 AS build
-ARG VERSION=15.5.0
+ARG VERSION=15.6.0
 WORKDIR /root
 RUN apt update && \
     apt -y install autoconf bison clang flex libboost-dev libboost-all-dev libc6-dev make wget
