@@ -1,23 +1,25 @@
-FROM ubuntu:18.04 AS build
-ARG VERSION=16.0.0
-WORKDIR /root
-RUN apt update && \
-    apt -y install autoconf bison clang flex libboost-dev libboost-all-dev libc6-dev make wget
+FROM ubuntu:22.04 AS build
+ARG VERSION=19.0.0
+WORKDIR /src
+RUN apt-get update && \
+    apt-get -y install build-essential automake autoconf libtool flex bison libboost-all-dev wget && \
+    apt-get clean
+
 RUN wget https://github.com/rcsoccersim/rcssserver/archive/rcssserver-$VERSION.tar.gz && \
-    tar xfz rcssserver-$VERSION.tar.gz && \
-    cd rcssserver-rcssserver-$VERSION && \
+    tar xfz rcssserver-$VERSION.tar.gz
+RUN cd rcssserver-rcssserver-$VERSION && \
     ./bootstrap && \
     ./configure && \
     make && \
     make install && \
     ldconfig
 
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 COPY --from=build /usr/local/lib /usr/local/lib
 COPY --from=build /usr/local/bin /usr/local/bin
 RUN ldconfig && \
-    apt update && \
-    apt install -y libboost-filesystem1.65.1 libboost-system1.65.1
+    apt-get update && \
+    apt-get install -y libboost-filesystem1.74.0 libboost-system1.74.0 && \
+    apt-get clean
 EXPOSE 6000/udp
 CMD ["/usr/local/bin/rcssserver"]
-
