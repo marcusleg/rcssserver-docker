@@ -1,0 +1,68 @@
+name: Update RCSSServer Version
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  check-and-update-version:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Get current version from Dockerfile
+      id: current-version
+      run: |
+        CURRENT_VERSION=$(grep -m1 '^ARG VERSION=' Dockerfile | cut -d= -f2)
+        echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        echo "Current version: $CURRENT_VERSION"
+    
+    - name: Get latest version from GitHub API
+      id: latest-version
+      run: |
+        LATEST_VERSION=$(curl --silent https://api.github.com/repos/rcsoccersim/rcssserver/releases/latest | grep -Po '"tag_name": "\K.*?(?=")' | cut -d '-' -f 2)
+        echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+        echo "Latest version: $LATEST_VERSION"
+    
+    - name: Compare versions
+      id: compare
+      run: |
+        if [ "${{ steps.current-version.outputs.version }}" != "${{ steps.latest-version.outputs.version }}" ]; then
+          echo "update-needed=true" >> $GITHUB_OUTPUT
+          echo "Version update needed: ${{ steps.current-version.outputs.version }} -> ${{ steps.latest-version.outputs.version }}"
+        else
+          echo "update-needed=false" >> $GITHUB_OUTPUT
+          echo "Version is up to date"
+        fi
+    
+    - name: Update Dockerfile
+      if: steps.compare.outputs.update-needed == 'true'
+      run: |
+        sed -i "s/^ARG VERSION=.*/ARG VERSION=${{ steps.latest-version.outputs.version }}/" Dockerfile
+        echo "Updated Dockerfile with version ${{ steps.latest-version.outputs.version }}"
+    
+    - name: Create Pull Request
+      if: steps.compare.outputs.update-needed == 'true'
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "Update RCSSServer version to ${{ steps.latest-version.outputs.version }}"
+        title: "Update RCSSServer version to ${{ steps.latest-version.outputs.version }}"
+        body: |
+          This PR updates the RCSSServer version in the Dockerfile.
+          
+          **Changes:**
+          - Updated `ARG VERSION` from `${{ steps.current-version.outputs.version }}` to `${{ steps.latest-version.outputs.version }}`
+          
+          **Source:**
+          - Latest release: https://github.com/rcsoccersim/rcssserver/releases/latest
+          
+          This PR was automatically created by the Update RCSSServer Version workflow.
+        assignees: ${{ github.repository_owner }}
+        branch: update-rcssserver-version-${{ steps.latest-version.outputs.version }}
+        delete-branch: true
