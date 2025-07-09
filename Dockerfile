@@ -1,5 +1,5 @@
 FROM ubuntu:22.04 AS build
-ARG VERSION=19.0.0
+ARG VERSION=
 WORKDIR /src
 RUN apt-get update && \
     apt-get -y install build-essential automake autoconf libtool flex bison libboost-all-dev wget && \
